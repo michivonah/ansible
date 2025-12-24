@@ -1,0 +1,9 @@
+- name: Ansible Quickstart
+  hosts: test
+  tasks:
+    - name: Ping the hosts
+      ansible.builtin.ping:
+
+    - name: Print a message
+      ansible.builtin.debug:
+        msg: Hello World!
