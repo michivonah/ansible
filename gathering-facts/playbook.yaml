@@ -1,0 +1,15 @@
+- name: Display all facts
+  hosts: docker_hosts
+  tasks:
+    - name: Print all gathered facts
+      debug:
+        var: ansible_facts
+    # Source: https://spacelift.io/blog/ansible-facts
+
+    # - name: Print os family
+    #   debug:
+    #     msg: "{{ ansible_os_family }}"
+
+    # - name: Sudo group name
+    #   debug:
+    #     msg: "{{ 'wheel' if ansible_os_family == 'RedHat' else 'sudo' }}"
