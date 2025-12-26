@@ -1,0 +1,47 @@
+- name: Basic Linux server setup
+  hosts: test
+  become: true
+  #become_method: sudo
+
+  tasks:
+    - name: Install basic packages
+      ansible.builtin.package:
+        name:
+          - sudo
+          - vim
+          - zip
+          - unzip
+        state: present
+
+    - name: Create user
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        append: yes
+        groups: "{{ 'wheel' if ansible_os_family == 'RedHat' else 'sudo' }}"
+
+    - name: Add ssh key to authorized_keys
+      ansible.posix.authorized_key:
+        key: "{{ lookup('file', public_ssh_key_path) }}"
+        user: "{{ admin_user }}"
+
+    - name: Disable sudo password for new user
+      ansible.builtin.lineinfile:
+        create: true
+        path: "/etc/sudoers.d/90-cloud-init-users"
+        line: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL"
+        owner: root
+        group: root
+        mode: '400'
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: SSH Hardening
+      ansible.builtin.template:
+        src: ./ssh-hardening.conf
+        dest: /etc/ssh/sshd_config.d/ssh-hardening.conf
+        owner: root
+        group: root
+        mode: '644'

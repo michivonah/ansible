@@ -1,0 +1,8 @@
+cloud_providers:
+  hetzner: hetz
+  oracle-cloud: oci
+  infomaniak: infm
+  digitalocean: doa
+  google-cloud: gcp
+  azure: azr
+  amazon-aws: aws

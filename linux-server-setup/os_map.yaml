@@ -1,0 +1,7 @@
+os_map:
+  Debian: deb
+  Ubuntu: ubnt
+  RockyLinux: rocky
+  OracleLinux: oraclelinux
+  RedHetEnterpriseLinux: rhel
+  Fedora: fed
