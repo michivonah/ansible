@@ -1,9 +1,14 @@
 - name: Basic Linux server setup
-  hosts: test
+  hosts: dns_swarm_cluster
   become: true
   #become_method: sudo
 
   tasks:
+    - name: Upgrade all packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        
     - name: Install basic packages
       ansible.builtin.package:
         name:
