@@ -1,9 +1,17 @@
 - name: Deploy beszle agent
   hosts:
-    - docker_hosts
-    - dns_servers
+    - dns_swarm_cluster
 
   tasks:
+    - name: Create /app dir
+      ansible.builtin.file:
+        path: /app
+        state: directory
+        owner: '{{ ansible_user }}'
+        group: '{{ ansible_user }}'
+        mode: '755'
+      become: true
+
     - name: Create folder
       ansible.builtin.file:
         path: /app/beszle-agent
