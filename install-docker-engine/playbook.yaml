@@ -1,0 +1,86 @@
+# docker community module required: https://docs.ansible.com/projects/ansible/latest/collections/community/docker/docker_swarm_module.html
+- name: Install and configure docker engine
+  become: true
+  hosts:
+    - dns_swarm_cluster
+
+  tasks:
+    - name: Install kernel-modules
+      ansible.builtin.package:
+        name:
+          - kernel-modules-extra # https://forums.rockylinux.org/t/docker-installation-failed-on-rhel-10/20024/6
+        state: present
+      register: install_kernel_modules_result
+
+    - name:
+      ansible.builtin.reboot:
+      when: install_kernel_modules_result.changed
+
+    - name: Add docker repository
+      ansible.builtin.yum_repository:
+        name: docker-ce
+        description: Docker CE Repository
+        baseurl: "https://download.docker.com/linux/rhel/{{ ansible_distribution_major_version }}/{{ ansible_architecture }}/stable"
+        gpgcheck: true
+        gpgkey: "https://download.docker.com/linux/rhel/gpg"
+
+    - name: Upgrade all packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+  
+    - name: Install docker packages
+      ansible.builtin.package:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        enablerepo:
+          - docker-ce-stable
+        state: present
+
+    - name: Enable docker service
+      ansible.builtin.systemd_service:
+        name: docker
+        enabled: true
+        state: "started"
+
+    - name: Add admin user to docker group
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        append: true
+        groups: docker
+        
+- name: Setup docker swarm mode
+  become: true
+  hosts:
+    - dns_swarm_cluster
+
+  tasks:
+    - name: Install python3 pip
+      ansible.builtin.package:
+        name:
+          - python3-pip
+        state: present
+
+    - name: Install Python Docker SDK
+      ansible.builtin.pip:
+        name: docker
+        state: present
+
+    - name: Create new swarm
+      community.docker.docker_swarm:
+        state: present
+      register: swarm_config
+      when: inventory_hostname == swarm_init_host
+
+    # Nodes
+    - name: Join docker swarm cluster
+      community.docker.docker_swarm:
+        state: join
+        remote_addrs:
+          - '{{ hostvars[swarm_init_host].ansible_host }}:{{ swarm_port | default(2377) }}'
+        join_token: '{{ hostvars[swarm_init_host].swarm_config.swarm_facts["JoinTokens"][ swarm_manager | ternary("Manager", "Worker") ]}}'
+      when: not inventory_hostname == swarm_init_host
