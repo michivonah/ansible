@@ -48,3 +48,19 @@
       ansible.builtin.lineinfile:
         line: net.ipv4.ip_unprivileged_port_start=0
         path: /etc/sysctl.conf
+
+- name: Setup directory for container data
+  hosts:
+    - your_servers
+  # vars:
+  #   podman_user: podman-user
+
+  tasks:
+    - name: Create /app dir
+      ansible.builtin.file:
+        path: /app
+        state: directory
+        owner: '{{ podman_user }}'
+        group: '{{ podman_user }}'
+        mode: '755'
+      become: true
