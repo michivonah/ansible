@@ -1,0 +1,61 @@
+- name: Deploy Caddy Proxy
+  hosts:
+    - your_servers
+  become: true
+  become_user: "{{ podman_user }}"
+  vars:
+    #podman_user: podman-user
+
+  tasks:
+    - name: Create directory
+      ansible.builtin.file:
+        path: /app/caddy
+        state: directory
+        owner: '{{ podman_user }}'
+        group: '{{ podman_user }}'
+        mode: '700'
+
+    - name: Create caddy data directory
+      ansible.builtin.file:
+        path: /app/caddy/data
+        state: directory
+
+    - name: Create Caddyfile
+      ansible.builtin.file:
+        path: /app/caddy/Caddyfile
+        # state: touch
+
+    - name: Create podman network
+      containers.podman.podman_network:
+        name: caddy-proxy
+        recreate: false
+
+    - name: Create pod
+      containers.podman.podman_pod:
+        name: caddy-proxy
+        recreate: true
+
+    - name: Get user id of podman_user
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ podman_user }}"
+      register: podman_user_info
+
+    - name: Run caddy
+      containers.podman.podman_container:
+        detach: true
+        image: docker.io/caddy:2
+        name: caddy-proxy
+        network: caddy-proxy
+        pod: caddy-proxy
+        publish:
+          - "80:80"
+          - "443:443"
+        recreate: true
+        restart_policy: always
+        state: started
+        timezone: Europe/Zurich
+        user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
+        volume:
+          - "/app/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,z,U"
+          - "/app/caddy/data:/data:z,U"
