@@ -44,10 +44,11 @@
       become: true
       become_user: "{{ podman_user }}"
 
-    - name: Enable unprivileged port usage
-      ansible.builtin.lineinfile:
-        line: net.ipv4.ip_unprivileged_port_start=0
-        path: /etc/sysctl.conf
+    - name: Enable unprivileged port usage / Reload sysctl
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_unprivileged_port_start
+        reload: true
+        value: 0
 
 - name: Setup directory for container data
   hosts:
