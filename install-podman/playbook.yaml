@@ -1,0 +1,50 @@
+- name: Install and configure podman
+  become: true
+  hosts:
+    - your_servers
+  # vars:
+  #   podman_user: podman-user
+
+  tasks:
+    - name: Create podman user
+      ansible.builtin.user:
+        name: "{{ podman_user }}"
+      register: podman_user_info
+
+    - name: Install Podman
+      ansible.builtin.package:
+        name:
+          - podman
+        state: present
+
+    - name: Enable lingering
+      ansible.builtin.command:
+        cmd: loginctl enable-linger {{ podman_user_info.uid }}
+
+    - name: Enable tmp.mount service
+      ansible.builtin.systemd_service:
+        enabled: true
+        name: tmp.mount
+
+    - name: Install ACL
+      # Required for executing the next task as unprivileged user
+      # https://docs.ansible.com/projects/ansible-core/2.18/playbook_guide/playbooks_privilege_escalation.html#risks-of-becoming-an-unprivileged-user
+      # https://docs.rockylinux.org/10/books/admin_guide/14-special-authority/#acl-permissions
+      ansible.builtin.package:
+        name:
+          - acl
+        state: present
+
+    - name: Enable podman-restart.service for podman user
+      ansible.builtin.systemd_service:
+        enabled: true
+        name: podman-restart.service
+        scope: user
+        state: started
+      become: true
+      become_user: "{{ podman_user }}"
+
+    - name: Enable unprivileged port usage
+      ansible.builtin.lineinfile:
+        line: net.ipv4.ip_unprivileged_port_start=0
+        path: /etc/sysctl.conf
