@@ -50,3 +50,21 @@
         owner: root
         group: root
         mode: '644'
+
+- name: Disable & remove cockpit
+  become: true
+  hosts:
+    - dns_swarm_cluster
+  
+  tasks:
+    - name: Disable cockpit service
+      ansible.builtin.systemd_service:
+        enabled: false
+        name: cockpit.socket
+        state: stopped
+
+    - name: Uninstall cockpit
+      ansible.builtin.package:
+        name:
+          - cockpit-*
+        state: absent
