@@ -1,0 +1,95 @@
+- name: Deploy Forgejo
+  hosts:
+    - your_servers
+  become: true
+  become_user: "{{ podman_user }}"
+  vars:
+    #podman_user: podman-user
+    postgres_user: forgejo
+    postgres_db: forgejo
+    postgres_pw: replace-with-secure-string
+
+  tasks:
+    - name: Create directory
+      ansible.builtin.file:
+        path: /app/forgejo
+        state: directory
+        owner: '{{ podman_user }}'
+        group: '{{ podman_user }}'
+        mode: '750'
+
+    - name: Create forgejo data directory
+      ansible.builtin.file:
+        path: /app/forgejo/forgejo
+        state: directory
+
+    - name: Create forgejo config directory
+      ansible.builtin.file:
+        path: /app/forgejo/conf
+        state: directory
+
+    - name: Create directory for PostgreSQL
+      ansible.builtin.file:
+        path: /app/forgejo/postgres
+        state: directory
+
+    - name: Create podman network
+      containers.podman.podman_network:
+        name: forgejo
+        recreate: false
+
+    - name: Create pod
+      containers.podman.podman_pod:
+        name: forgejo
+        recreate: true
+
+    - name: Get user id of podman_user
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ podman_user }}"
+      register: podman_user_info
+
+    - name: Run Forgejo container
+      containers.podman.podman_container:
+        detach: true
+        env:
+          FORGEJO__database__DB_TYPE: postgres
+          FORGEJO__database__HOST: forgejo-db:5432
+          FORGEJO__database__NAME: "{{ postgres_db }}"
+          FORGEJO__database__USER: "{{ postgres_user }}"
+          FORGEJO__database__PASSWD: "{{ postgres_pw }}"
+        image: codeberg.org/forgejo/forgejo:14-rootless
+        name: forgejo-app
+        network: forgejo
+        pod: forgejo
+        publish:
+          - "3000:3000"
+          - "222:2222"
+        recreate: true
+        restart_policy: always
+        state: started
+        timezone: Europe/Zurich
+        user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
+        volume:
+          - "/app/forgejo/forgejo:/var/lib/gitea:z,U"
+          - "/app/forgejo/conf:/etc/gitea:z,U"
+          - "/etc/localtime:/etc/localtime:ro"
+
+    - name: Run PostgreSQL db
+      containers.podman.podman_container:
+        detach: true
+        env:
+          POSTGRES_DB: "{{ postgres_db }}"
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_pw }}"
+        image: docker.io/postgres:14
+        name: forgejo-db
+        network: forgejo
+        pod: forgejo
+        recreate: true
+        restart_policy: always
+        state: started
+        timezone: Europe/Zurich
+        user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
+        volume:
+          - "/app/forgejo/postgres:/var/lib/postgresql/data:z,U"
