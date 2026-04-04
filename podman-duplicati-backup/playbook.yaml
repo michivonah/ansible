@@ -4,7 +4,9 @@
   become: true
   become_user: "{{ podman_user }}"
   vars:
+    backup_dir: /app # The directory you want to back up
     #podman_user: podman-user
+    timezone: Europe/Zurich
 
   tasks:
     - name: Create config directory
@@ -22,6 +24,7 @@
         hostname: "{{ ansible_hostname }}"
         name: duplicati
         recreate: true
+        userns: "keep-id"
 
     - name: Get user id of podman_user
       ansible.builtin.getent:
@@ -29,13 +32,31 @@
         key: "{{ podman_user }}"
       register: podman_user_info
 
+    # Required, so the podman_user is able to backup files he isn't owner of without escalating to root privileges
+    # https://docs.ansible.com/projects/ansible/latest/collections/ansible/posix/acl_module.html
+    # https://www.geeksforgeeks.org/linux-unix/linux-setfacl-command-with-example/
+    - name: Grant user read access for backup
+      ansible.posix.acl:
+        default: "{{ item }}"
+        entity: "{{ podman_user }}"
+        etype: "user"
+        path: "{{ backup_dir }}"
+        permissions: "rx"
+        recursive: true
+        state: present
+      loop:
+        - true
+        - false
+      become: true
+      become_user: root
+
     - name: Run duplicati
       containers.podman.podman_container:
         detach: true
         env:
           DUPLICATI__WEBSERVICE_ALLOWED_HOSTNAMES: "{{ ansible_host }}"
           DUPLICATI__WEBSERVICE_PASSWORD: "{{ duplicati_webservice_password }}"
-          DUPLICATI__WEBSERVICE_TIMEZONE: Europe/Zurich
+          DUPLICATI__WEBSERVICE_TIMEZONE: "{{ timezone }}"
           DUPLICATI__DISABLE_DB_ENCRYPTION: false
           SETTINGS_ENCRYPTION_KEY: "{{ duplicat_db_encryption_key }}"
           USAGEREPORTER_Duplicati_LEVEL: "none"
@@ -47,9 +68,11 @@
           - "8200:8200"
         recreate: true
         restart_policy: always
+        security_opt:
+          - "no-new-privileges"
         state: started
-        timezone: Europe/Zurich
-        user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
+        timezone: "{{ timezone }}"
+        user: "0:0"
         volume:
           - "/app/duplicati/config:/data:z,U"
-          - "/app:/app:ro" # The data you wan't to backup
+          - "{{ backup_dir }}:{{ backup_dir }}:z,ro"
