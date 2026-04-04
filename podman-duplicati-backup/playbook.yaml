@@ -1,0 +1,55 @@
+- name: Deploy Duplicati Backup
+  hosts:
+    - your_servers
+  become: true
+  become_user: "{{ podman_user }}"
+  vars:
+    #podman_user: podman-user
+
+  tasks:
+    - name: Create config directory
+      ansible.builtin.file:
+        path: /app/duplicati/config
+        state: directory
+
+    - name: Create podman network
+      containers.podman.podman_network:
+        name: duplicati
+        recreate: false
+
+    - name: Create pod
+      containers.podman.podman_pod:
+        hostname: "{{ ansible_hostname }}"
+        name: duplicati
+        recreate: true
+
+    - name: Get user id of podman_user
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ podman_user }}"
+      register: podman_user_info
+
+    - name: Run duplicati
+      containers.podman.podman_container:
+        detach: true
+        env:
+          DUPLICATI__WEBSERVICE_ALLOWED_HOSTNAMES: "{{ ansible_host }}"
+          DUPLICATI__WEBSERVICE_PASSWORD: "{{ duplicati_webservice_password }}"
+          DUPLICATI__WEBSERVICE_TIMEZONE: Europe/Zurich
+          DUPLICATI__DISABLE_DB_ENCRYPTION: false
+          SETTINGS_ENCRYPTION_KEY: "{{ duplicat_db_encryption_key }}"
+          USAGEREPORTER_Duplicati_LEVEL: "none"
+        image: docker.io/duplicati/duplicati:latest
+        name: duplicati
+        network: duplicati
+        pod: duplicati
+        publish:
+          - "8200:8200"
+        recreate: true
+        restart_policy: always
+        state: started
+        timezone: Europe/Zurich
+        user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
+        volume:
+          - "/app/duplicati/config:/data:z,U"
+          - "/app:/app:ro" # The data you wan't to backup
