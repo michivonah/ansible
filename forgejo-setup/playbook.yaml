@@ -7,7 +7,7 @@
     #podman_user: podman-user
     postgres_user: forgejo
     postgres_db: forgejo
-    postgres_pw: replace-with-secure-string
+    postgres_pw: "{{ forgejo.postgres_pw }}"
 
   tasks:
     - name: Create directory
