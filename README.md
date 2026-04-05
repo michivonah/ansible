@@ -153,6 +153,7 @@ when: ansible_os_family == 'Debian'
 - When a playbook is run, ansible firstly gathers some information about the hosts, its running on
 - Those facts than can be accessed as variables with `ansible_` prefix
 - This enables the possibility to only run some tasks on certain operating systems
+- Fact gathering can be disabled per play with `gather_facts: false`
 
 [Docs](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/gather_facts_module.html)
 [Guide to Ansible Facts and Fact Gathering](https://spacelift.io/blog/ansible-facts)
@@ -172,9 +173,23 @@ when: ansible_os_family == 'Debian'
 [Docs](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/debug_module.html)
 
 ### Variables
-- As used for tests & filters
+- As used for [tests](#tests) & [filters](#filters)
 
 [Docs](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_variables.html)
+
+### Variable Prompts
+- Variables prompts enable you to ask the user before running the playbook to input some variables/values for the current execution
+- Those prompt variables can be defined with a list named `vars_prompt`, instead of the default `vars`
+
+```yaml
+  vars_prompt:
+    - name: api_key
+      prompt: Enter the API key
+```
+
+- This can be used for supplying sensitive information at runtime (like passwords) which weren't stored in [Ansible Vault](#ansible-vault).
+
+[Source](https://www.redhat.com/en/blog/ansible-playbooks-secrets)
 
 ### Handy modules
 - [ansible.builtin.user](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/user_module.html)
@@ -207,3 +222,92 @@ Show installed collections:
 ```bash
 ansible-galaxy collection list
 ```
+
+## Ansible Vault
+- Ansible Vault is a tool to manage sensitive information within Ansible, so they don't need to be stored in plaintext
+- It's is possible to use one password for encrypting all secrets or use one password per secret
+- Each password has his own vault with an vault id. The vault id can be used to differentiate the passwords and where a secret is stored.
+- The `--vault-id` has to be passed to ansible like follows: `--vault-id label@source`
+- Ansible Vault can be used to encrypt variables and files
+- The encrypted content includes `!vault` to signalize that Ansible has to decrypt the content inside
+- The easiest way to use Ansible Vault is having an encrypted file which stores sensitive variables and then is encrypted via Ansible Vault.
+- Using encrypted variables inside a playbook don't differs from using a plaintext variable, so it doens't interrupt you from doing your work.
+
+### Encrypt variable (in-file-usage)
+- To encrypt a string on the fly, use the `encrypt_string` method
+```bash
+ansible-vault encrypt_string
+```
+
+- You will be prompted to input your vault password and afterwards the plaintext content of the secret
+- Notice that you end the input with twice typing `Ctrl + D` and not with `Enter`!
+- Using `Enter` counts as linebreak inside your secret
+
+- Afterwards the encrypted string is shown in the console
+- From there you can copy and use it inside your playbooks
+- For decrypting to work right, you have to define them as variables
+```yaml
+  vars:
+    my_secret: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          ENCRYPTED-VALUE
+```
+
+- To access the secret you have to pass the parameter `--ask-vault-pass` when running a playbook
+- Whilst runtime you then will be asked for your encryption key
+- Ansible Vault then will ensure the values get decrypted right
+
+### Creating/managing secrets (file-level)
+- Firstly create a file which contains sensitive information
+```yaml
+my_secret: this-is-a-very-secret-information
+```
+
+- Encrypt a file
+```bash
+ansible-vault encrypt <FILE>
+```
+
+Example:
+```bash
+ansible-vault encrypt vars.yaml
+```
+
+- When you want to adjust/edit your secrets, you have two ways to accomplish this:
+
+#### Decrypting the entire file and encrypting again afterwards
+```bash
+ansible-vault decrypt vars.yaml
+```
+- Don't forget to encrypt again after editing the file
+
+#### Opening the file inisde an text editor like `vi` or `emacs`
+```bash
+ansible-vault edit vars.yaml
+```
+
+
+### Referencing a secret in a playbook
+- Referencing a vault item inside a playbook is done as with any other non-encrypted variable
+```yaml
+    - name: Get secret
+      debug:
+        msg: "{{ my_secret }}"
+```
+
+- While running the playbook you than have to pass the secrets file with `-e`
+```bash
+ansible-playbook -i inventory.yaml -e @vars.yaml --ask-vault-pass playbook.yaml
+```
+
+- Alternatively to interactive passing the vault password (encryption key) to Ansible, you can use a password file, which contains the vault password
+```bash
+ansible-playbook -i inventory.yaml -e @vars.yaml --vault-password-file /path/to/password.file playbook.yaml 
+```
+- Notice that this file should be locked down/protected, so that not everyone can access it.
+- The file shouldn't store the plaintext password on your disk, for obvious reasons
+- The `--vault-password-file` parameter can be combined/tied together with other secret management tools or the CLI of a password manager for providing the password on the fly
+
+[Docs](https://docs.ansible.com/projects/ansible/latest/vault_guide/vault_managing_passwords.html)
+[Basic summary](https://www.env0.com/blog/protecting-secrets-with-ansible-vault)
+[Practial usage](https://www.redhat.com/en/blog/ansible-playbooks-secrets)
