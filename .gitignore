@@ -209,3 +209,4 @@ __marimo__/
 # Ansible
 inventory.ini
 inventory.yaml
+vault.yaml
