@@ -1,0 +1,28 @@
+log:
+  level: info
+  job_level: info
+
+runner:
+  file: .runner
+  capacity: 1
+  timeout: 3h
+  shutdown_timeout: 3h
+  insecure: false
+  fetch_timeout: 5s
+  report_interval: 1s
+  labels: []
+
+container:
+  enable_ipv6: false
+  privileged: false
+  options:
+  valid_volumes: []
+  force_pull: false
+  force_rebuild: false
+
+server:
+  connections:
+    forgejo:
+      url: {{ forgejo.url }}
+      uuid: {{ forgejo.uuid }}
+      token: {{ forgejo.token }}
