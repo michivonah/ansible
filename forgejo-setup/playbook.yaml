@@ -58,7 +58,7 @@
           FORGEJO__database__NAME: "{{ postgres_db }}"
           FORGEJO__database__USER: "{{ postgres_user }}"
           FORGEJO__database__PASSWD: "{{ postgres_pw }}"
-        image: codeberg.org/forgejo/forgejo:14-rootless
+        image: codeberg.org/forgejo/forgejo:15-rootless
         name: forgejo-app
         network: forgejo
         pod: forgejo
