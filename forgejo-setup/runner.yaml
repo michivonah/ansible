@@ -49,15 +49,19 @@
 
     - name: Docker in Podman
       containers.podman.podman_container:
-        command: "dockerd -H tcp://0.0.0.0:2375 --tls=false"
+        env:
+          DOCKER_TLS_CERTDIR: /certs
+          DOCKER_HOST: docker-dind
+        hostname: docker
         image: docker.io/docker:dind
         name: docker-dind
         network: forgejo-runner
         privileged: true # required for rootless podman
-        recreate: false
+        recreate: true
         restart_policy: always
         state: started
         timezone: Europe/Zurich
+        user: 0:0
         volume:
           - "{{ certs_dir }}:/certs:z"
 
@@ -101,3 +105,4 @@
 # - https://forgejo.org/docs/latest/admin/actions/#oci-image-installation
 # - https://forgejo.org/docs/latest/admin/actions/installation/docker/
 # - https://forgejo.org/docs/latest/admin/actions/security/
+# - https://code.forgejo.org/forgejo/runner/src/branch/main/examples/docker-compose/compose-forgejo-and-runner.yml (example with volumes for certs)
