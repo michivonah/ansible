@@ -42,11 +42,6 @@
         name: forgejo-runner
         recreate: false
 
-    - name: Remove existing runner container # to prevent dependency issues
-      containers.podman.podman_container:
-        name: forgejo-runner
-        state: absent
-
     - name: Docker in Podman
       containers.podman.podman_container:
         env:
@@ -87,8 +82,6 @@
         name: forgejo-runner
         network: forgejo-runner
         recreate: false
-        requires:
-          - docker-dind
         restart_policy: always
         state: started
         timezone: Europe/Zurich
