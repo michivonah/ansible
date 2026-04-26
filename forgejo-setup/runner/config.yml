@@ -10,7 +10,9 @@ runner:
   insecure: false
   fetch_timeout: 5s
   report_interval: 1s
-  labels: []
+  labels: [
+    "docker"
+  ]
 
 container:
   enable_ipv6: false
