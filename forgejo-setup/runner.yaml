@@ -47,7 +47,7 @@
         env:
           DOCKER_TLS_CERTDIR: /certs
           DOCKER_HOST: docker-dind
-        hostname: docker
+        hostname: docker-dind
         image: docker.io/docker:dind
         name: docker-dind
         network: forgejo-runner
