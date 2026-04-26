@@ -75,7 +75,7 @@
           - "--config"
           - "config.yml"
         env:
-          DOCKER_HOST: tcp://docker-dind:2375
+          DOCKER_HOST: tcp://docker-dind:2376
           DOCKER_CERT_PATH: /certs/client
           DOCKER_TLS_VERIFY: "1"
         image: data.forgejo.org/forgejo/runner:12
