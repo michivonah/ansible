@@ -1,0 +1,104 @@
+- name: Deploy webserver for couch cms
+  hosts:
+    - ava-website-v2
+  become: true
+  become_user: "{{ podman_user }}"
+  gather_facts: false
+  vars:
+    #podman_user: podman-user
+    project_path: /app/website
+    webroot_dir: /app/website/webroot
+    webconfig_dir: /app/website/webconfig
+    db_dir: /app/website/db
+    # website:
+    #   domain: example.com
+    #   db_name: couch
+    #   db_user: couch
+    #   db_password: replace_with_something_secure
+    #   php_version: 8.3
+
+  tasks:
+    - name: Create directories for webserver
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        owner: '{{ podman_user }}'
+        group: '{{ podman_user }}'
+        mode: "755"
+      loop:
+        - '{{ webroot_dir }}'
+        - '{{ webconfig_dir }}'
+
+    - name: Create directory for db
+      ansible.builtin.file:
+        path: '{{ db_dir }}'
+        state: directory
+        mode: "755"
+
+    - name: Copy Dockerfile for webserver
+      ansible.builtin.template:
+        src: ./Dockerfile
+        dest: '{{ project_path }}/Dockerfile'
+        owner: '{{ podman_user }}'
+        group: '{{ podman_user }}'
+        mode: '600'
+
+    - name: Copy Caddyfile for webserver
+      ansible.builtin.template:
+        src: ./templates/Caddyfile
+        dest: '{{ project_path }}/Caddyfile'
+        owner: '{{ podman_user }}'
+        group: '{{ podman_user }}'
+        mode: '644'
+      register: caddyfile_result
+
+    - name: Get user id of podman_user
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ podman_user }}"
+      register: podman_user_info
+
+    - name: Create podman network
+      containers.podman.podman_network:
+        name: couch-website
+        recreate: false
+
+    - name: Build webserver image
+      containers.podman.podman_image:
+        name: franken-php-webserver
+        path: '{{ project_path }}'
+
+    - name: MariaDB
+      containers.podman.podman_container:
+        env:
+          MARIADB_ROOT_PASSWORD: "{{ website.db_password }}"
+          MARIADB_DATABASE: "{{ website.db_name }}"
+          MARIADB_USER: "{{ website.db_user }}"
+          MARIADB_PASSWORD: "{{ website.db_password }}"
+          # MARIADB_AUTO_UPGRADE: "true" # don't enable in production
+        image: docker.io/mariadb:12.3
+        name: cms-db
+        network: couch-website
+        recreate: false
+        restart_policy: always
+        state: started
+        timezone: "{{ timezone }}"
+        volume:
+          - "{{ db_dir }}:/var/lib/mysql:z"
+
+    - name: Webserver
+      containers.podman.podman_container:
+        image: franken-php-webserver
+        name: franken-php-webserver
+        network: couch-website
+        publish:
+          - "80:80"
+          - "443:443"
+        recreate: "{{ caddyfile_result.changed }}"
+        restart_policy: always
+        state: started
+        timezone: "{{ timezone }}"
+        volume:
+          - "{{ webroot_dir }}:/app/public:z"
+          - "{{ webconfig_dir }}:/data:z"
+          - "{{ project_path }}/Caddyfile:/etc/frankenphp/Caddyfile:z"
