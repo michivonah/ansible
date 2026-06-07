@@ -1,0 +1,39 @@
+- name: Deploy beszel agent (Podman)
+  hosts:
+    - podman_hosts
+  become: true
+  become_user: "{{ podman_user }}"
+  gather_facts: false
+  vars:
+    beszel_agent_dir: /app/beszel-agent
+
+  tasks:
+    - name: Get user id of podman_user
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ podman_user }}"
+      register: podman_user_info
+
+    - name: Create data directory
+      ansible.builtin.file:
+        path: "{{ beszel_agent_dir }}/beszel_agent_data"
+        state: directory
+
+    - name: Run beszel agent container
+      containers.podman.podman_container:
+        env:
+          LISTEN: "{{ beszel.agent_port | default(45876) }}"
+          KEY: "{{ beszel.key }}"
+          TOKEN: "{{ beszel_token }}"
+          HUB_URL: "{{ beszel.hub_url }}"
+        image: docker.io/henrygd/beszel-agent:latest
+        name: beszel-agent
+        network: host
+        pull: "newer"
+        recreate: false
+        restart_policy: always
+        state: started
+        timezone: "{{ timezone }}"
+        user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
+        volume:
+          - "{{ beszel_agent_dir }}/beszel_agent_data:/var/lib/beszel-agent:z"
