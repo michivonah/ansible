@@ -1,3 +1,10 @@
+{
+	frankenphp {
+		num_threads 16
+		max_threads 64
+	}
+}
+
 www.{{ website.domain }} {
 	redir https://{{ website.domain }}{uri} permanent
 }
@@ -25,7 +32,9 @@ www.{{ website.domain }} {
 	respond @couch_secure "Access Denied" 403
 
 	# PHP Engine
-	php_server
+	php_server {
+		env max_execution_time 30
+	}
 
 	# Cache-Control Headers
 	@images path *.jpg *.jpeg *.gif *.png *.ico
