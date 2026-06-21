@@ -13,12 +13,14 @@ runner:
   labels: [
     "docker"
   ]
+  
+  envs:
+    DOCKER_HOST: tcp://docker-dind:2375
 
 container:
   enable_ipv6: false
   privileged: false
-  options:
-  valid_volumes: []
+  docker_host: "tcp://docker-dind:2375"
   force_pull: false
   force_rebuild: false
 
