@@ -10,9 +10,10 @@ runner:
   insecure: false
   fetch_timeout: 5s
   report_interval: 1s
-  labels: [
-    "docker"
-  ]
+  labels:
+    - docker
+    - debian:docker://docker.io/library/node:lts
+    - ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest
   
   envs:
     DOCKER_HOST: tcp://docker-dind:2375
