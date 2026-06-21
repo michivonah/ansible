@@ -52,7 +52,7 @@
         name: docker-dind
         network: forgejo-runner
         privileged: true # required for rootless podman
-        recreate: true
+        recreate: false
         restart_policy: always
         state: started
         timezone: Europe/Zurich
@@ -66,6 +66,7 @@
         dest: "{{ data_dir }}/config.yml"
         owner: '{{ podman_user }}'
         group: '{{ podman_user }}'
+      register: res_runner_config
 
     - name: Forgjeo runner
       containers.podman.podman_container:
@@ -81,7 +82,7 @@
         image: data.forgejo.org/forgejo/runner:12
         name: forgejo-runner
         network: forgejo-runner
-        recreate: false
+        recreate: "{{ res_runner_config.changed }}"
         restart_policy: always
         state: started
         timezone: Europe/Zurich
