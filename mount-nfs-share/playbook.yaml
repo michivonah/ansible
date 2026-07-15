@@ -1,0 +1,20 @@
+- name: Mount NFS share
+  hosts:
+    - your_servers
+  gather_facts: false
+  # vars:
+  #   mounts:
+  #     - path: /mnt/something
+  #       src: 192.168.1.10:/nfs-share
+  #       type: nfs
+
+  tasks:
+    - name: Mount NFS share
+      ansible.posix.mount:
+        boot: true
+        fstype: "{{ item.type }}"
+        opts: rw
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        state: mounted
+      loop: "{{ mounts }}"
