@@ -51,6 +51,12 @@
         group: root
         mode: '644'
 
+    - name: Install QEMU guest agent # for proxmox, etc.
+      ansible.builtin.package:
+        name: qemu-guest-agent
+        state: present
+      when: ansible_virtualization_type == 'kvm'
+
 - name: Disable & remove cockpit
   become: true
   hosts:
