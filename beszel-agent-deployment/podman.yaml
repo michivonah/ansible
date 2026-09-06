@@ -36,4 +36,4 @@
         timezone: "{{ timezone }}"
         user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
         volume:
-          - "{{ beszel_agent_dir }}/beszel_agent_data:/var/lib/beszel-agent:z"
+          - "{{ beszel_agent_dir }}/beszel_agent_data:/var/lib/beszel-agent:U"
