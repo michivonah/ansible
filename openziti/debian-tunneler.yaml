@@ -1,0 +1,56 @@
+- name: Install OpenZiti tunneler on debian host
+  gather_facts: true
+  hosts:
+    - debian-ziti-test
+  vars:
+    ubuntu_lts_mapping:
+      trixie: "jammy"
+      bookworm: "jammy"
+      bullseye: "focal"
+    ziti_identity_dir: /opt/openziti/etc/identities
+
+  tasks:
+    - name: Map UBUNTU_LTS value based on distribution release
+      ansible.builtin.set_fact:
+        ubuntu_lts: "{{ ubuntu_lts_mapping[ansible_distribution_release] | default('jammy') }}"
+
+    - name: Add OpenZiti repo
+      ansible.builtin.deb822_repository:
+        components: main
+        name: openziti
+        signed_by: https://get.openziti.io/tun/package-repos.gpg
+        suites: "{{ ubuntu_lts }}"
+        state: present
+        types: deb
+        uris: https://packages.openziti.org/zitipax-openziti-deb-stable
+      become: true
+
+    - name: Install ziti-edge-tunnel
+      ansible.builtin.apt:
+        name:
+          - ziti-edge-tunnel
+        state: present
+        update_cache: true
+      become: true
+
+    - name: Enable + start ziti-edge-tunnel service
+      ansible.builtin.systemd_service:
+        enabled: true
+        name: ziti-edge-tunnel.service
+        state: "started"
+      become: true
+
+    - name: Define identity name
+      ansible.builtin.set_fact:
+        ziti_identity_name_fix: "{{ ziti_identity_name | default(ansible_hostname) }}"
+
+    - name: Check if identity is already imported
+      ansible.builtin.stat:
+        path: "{{ ziti_identity_dir }}/{{ ziti_identity_name_fix }}.json"
+      register: ziti_identity_import_check
+
+    - name: Add identity
+      ansible.builtin.command:
+        cmd: 'ziti-edge-tunnel add --jwt "{{ ziti_enroll_token }}" --identity {{ ziti_identity_name_fix }}'
+      become: true
+      when: not ziti_identity_import_check.stat.exists
