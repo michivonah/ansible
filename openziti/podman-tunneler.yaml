@@ -1,0 +1,39 @@
+- name: Install OpenZiti tunneler via Podman
+  gather_facts: false
+  hosts:
+    - your_server
+  vars:
+    openziti:
+      data_dir: /app/ziti-tunneler
+
+  tasks:
+    - name: Get user id of podman_user
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ podman_user }}"
+      register: podman_user_info
+      become: true
+      become_user: "{{ podman_user }}"
+
+    - name: Create data directory
+      ansible.builtin.file:
+        group: "{{ podman_user }}"
+        owner: "{{ podman_user }}"
+        path: "{{ openziti.data_dir }}"
+        state: directory
+      become: true
+
+    - name: Create tunneler container
+      containers.podman.podman_container:
+        env:
+          ZITI_ENROLL_TOKEN: "{{ ziti_enroll_token }}"
+        image: "docker.io/openziti/ziti-host"
+        name: "openziti-tunneler"
+        network: "host"
+        restart_policy: "always"
+        state: "started"
+        user: "{{ podman_user_info.ansible_facts.getent_passwd[podman_user][1] }}:{{ podman_user_info.ansible_facts.getent_passwd[podman_user][2] }}"
+        volume:
+          - "{{ openziti.data_dir }}:/ziti-edge-tunnel:z,U"
+      become: true
+      become_user: "{{ podman_user }}"
