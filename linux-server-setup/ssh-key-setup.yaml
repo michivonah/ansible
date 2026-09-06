@@ -1,0 +1,9 @@
+- name: Just add SSH keys to server
+  hosts:
+    - proxmox
+
+  tasks:
+    - name: Add ssh key to authorized_keys
+      ansible.posix.authorized_key:
+        key: "{{ lookup('file', public_ssh_key_path) }}"
+        user: "{{ ansible_user }}"
