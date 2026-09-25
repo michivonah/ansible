@@ -191,6 +191,25 @@ when: ansible_os_family == 'Debian'
 
 [Source](https://www.redhat.com/en/blog/ansible-playbooks-secrets)
 
+### run_once
+- `run_once: true` is your life saver, when you wan't to define global variables
+- You can use it to gather some data/facts which is run once and the available as variable for use from all hosts
+- Example in [k3s/setup.yaml](k3s/setup.yaml)
+
+```yaml
+- name: Get K3s cluster join token
+  ansible.builtin.command:
+    cmd: cat /var/lib/rancher/k3s/server/token
+  become: true
+  run_once: true
+  when: k3s_master_node
+  register: join_token
+```
+
+- The variable `join_token` is then available for all hosts but the definition is run only once.
+
+- [Medium article](https://medium.com/opsops/the-magic-of-run-once-e31d583eca62)
+
 ### Handlers
 - Handlers can be used to trigger a action after all other tasks in a playbook are executed.
 - The work like on change triggers.
