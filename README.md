@@ -191,6 +191,31 @@ when: ansible_os_family == 'Debian'
 
 [Source](https://www.redhat.com/en/blog/ansible-playbooks-secrets)
 
+### Handlers
+- Handlers can be used to trigger a action after all other tasks in a playbook are executed.
+- The work like on change triggers.
+
+```yaml
+  tasks:
+    - name: Download K3s binary
+      ansible.builtin.get_url:
+        dest: /usr/local/bin/k3s
+        force: true
+        mode: "a+x"
+        url: "https://github.com/k3s-io/k3s/releases/download/v{{ k3s_version }}+k3s1/k3s"
+      become: true
+      notify: Restart K3s
+
+  handlers:
+    - name: Restart K3s
+      ansible.builtin.systemd_service:
+        name: k3s.service
+        state: restarted
+      become: true
+```
+
+- [Docs](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html)
+
 ### Handy modules
 - [ansible.builtin.user](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/user_module.html)
 - [ansible.builtin.package](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/package_module.html)
