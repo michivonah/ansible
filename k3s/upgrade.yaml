@@ -1,0 +1,46 @@
+# K3s docs: https://docs.k3s.io/
+# Run playbook: ansible-playbook -i inventory.yaml k3s/upgrade.yaml
+
+# PLEASE CHECK RELEASE NOTES FOR BREAKING CHANGES BEFORE UPDATING!
+
+- name: Setup K3s
+  gather_facts: false
+  hosts: k3s
+  vars:
+    k3s_version: 1.37.0
+
+  tasks:
+    - name: Get current K3s version
+      ansible.builtin.command:
+        cmd: "/usr/local/bin/k3s --version"
+      register: k3s_installed_version
+      changed_when: false
+      failed_when: false
+
+    - name: Check if update required
+      ansible.builtin.set_fact:
+        update_required: "{{ k3s_version not in k3s_installed_version.stdout }}"
+
+    - name: Stop K3s
+      ansible.builtin.systemd_service:
+        name: k3s.service
+        state: stopped
+      become: true
+      when: update_required
+
+    - name: Download K3s binary
+      ansible.builtin.get_url:
+        dest: /usr/local/bin/k3s
+        force: true
+        mode: "a+x"
+        url: "https://github.com/k3s-io/k3s/releases/download/v{{ k3s_version }}+k3s1/k3s"
+      become: true
+      when: update_required
+      register: download_binary
+
+    - name: Start K3s
+      ansible.builtin.systemd_service:
+        name: k3s.service
+        state: started
+      become: true
+      when: update_required
