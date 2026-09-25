@@ -1,0 +1,64 @@
+# K3s docs: https://docs.k3s.io/
+# Run playbook: ansible-playbook -i inventory.yaml k3s/setup.yaml
+
+- name: Setup K3s
+  gather_facts: true
+  hosts: k3s
+  vars:
+    k3s_version: 1.26.5
+
+  tasks:
+    - name: Install kernel-modules-extra on RHEL-based-oses
+      ansible.builtin.dnf:
+        name: "kernel-modules-extra"
+        state: present
+      become: true
+      when: ansible_os_family == 'RedHat'
+
+    - name: Disable firewalld.service # as recommended by K3s: https://docs.k3s.io/installation/requirements?os=rhel#firewalld-1
+      ansible.builtin.systemd_service:
+        enabled: false
+        name: firewalld.service
+        state: stopped
+      become: true
+      when: ansible_os_family == 'RedHat'
+
+    - name: Download K3s binary
+      ansible.builtin.get_url:
+        #checksum:
+        dest: /usr/local/bin/k3s
+        mode: "a+x"
+        url: "https://github.com/k3s-io/k3s/releases/download/v{{ k3s_version }}+k3s1/k3s"
+      become: true
+
+    - name: Create symlinks for additional commands
+      ansible.builtin.file:
+        force: true
+        path: "{{ item }}"
+        src: /usr/local/bin/k3s
+        state: link
+      become: true
+      loop:
+        - /usr/local/bin/kubectl
+        - /usr/local/bin/crictl
+        - /usr/local/bin/ctr
+
+    - name: Create systemd unit for K3s
+      ansible.builtin.template:
+        dest: /etc/systemd/system/k3s.service
+        src: ./systemd/k3s.service.j2
+      become: true
+
+    - name: Create env file for K3s
+      ansible.builtin.file:
+        path: /etc/systemd/system/k3s.service.env
+        state: touch
+      become: true
+
+    - name: Enable & start K3s service
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+        enabled: true
+        name: k3s.service
+        state: started
+      become: true
