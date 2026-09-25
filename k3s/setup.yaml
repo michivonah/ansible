@@ -14,6 +14,12 @@
         state: present
       become: true
       when: ansible_os_family == 'RedHat'
+      register: kernel_modules
+
+    - name: Reboot if kernel modules were installed
+      ansible.builtin.reboot:
+      become: true
+      when: kernel_modules.changed
 
     - name: Disable firewalld.service # as recommended by K3s: https://docs.k3s.io/installation/requirements?os=rhel#firewalld-1
       ansible.builtin.systemd_service:
