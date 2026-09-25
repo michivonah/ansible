@@ -22,6 +22,7 @@
         state: stopped
       become: true
       when: ansible_os_family == 'RedHat'
+      ignore_errors: true # Skips step if firewalld isn't installed
 
     - name: Download K3s binary
       ansible.builtin.get_url:
