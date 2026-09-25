@@ -22,5 +22,4 @@ Restart=always
 RestartSec=5s
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart=/usr/local/bin/k3s server --cluster-init
-# AGENNT START: agent --server https://XXXXXX:6443 --token TOKEN 
+ExecStart=/usr/local/bin/k3s {{ 'server' if k3s_node_type == 'server' else 'agent' }}

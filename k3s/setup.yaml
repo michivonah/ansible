@@ -6,8 +6,31 @@
   hosts: k3s
   vars:
     k3s_version: 1.37.0
+    #k3s_node_type: server # possible values: [server, agent]; should be defined on host level inside inventory;
+    #k3s_master_node: false # Set this to true, on the node which should initialize the cluster + store the join token
 
   tasks:
+    # - name: Get current index
+    #   ansible.builtin.set_fact:
+    #     host_index: "{{ ansible_play_hosts.index(inventory_hostname) }}"
+
+    - name: Get K3s cluster join token
+      ansible.builtin.command:
+        cmd: cat /var/lib/rancher/k3s/server/token
+      become: true
+      run_once: true
+      when: k3s_master_node
+      register: join_token
+      changed_when: false
+      failed_when: false
+
+    - name: Save join token as fact
+      ansible.builtin.set_fact:
+        k3s_join_token: "{{ join_token.stdout }}"
+        k3s_join_url: "https://{{ ansible_host }}:6443" # get URL to join the cluster (ip of the master node)
+      run_once: true
+      when: k3s_master_node
+
     - name: Install kernel-modules-extra on RHEL-based-oses
       ansible.builtin.dnf:
         name: "kernel-modules-extra"
@@ -53,13 +76,15 @@
     - name: Create systemd unit for K3s
       ansible.builtin.template:
         dest: /etc/systemd/system/k3s.service
+        mode: '755'
         src: ./systemd/k3s.service.j2
       become: true
 
     - name: Create env file for K3s
-      ansible.builtin.file:
-        path: /etc/systemd/system/k3s.service.env
-        state: touch
+      ansible.builtin.template:
+        dest: /etc/systemd/system/k3s.service.env
+        mode: '600'
+        src: ./systemd/k3s.service.env.j2
       become: true
 
     - name: Enable & start K3s service
