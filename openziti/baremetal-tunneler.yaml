@@ -60,6 +60,7 @@
     - name: Check if identity is already imported
       ansible.builtin.stat:
         path: "{{ ziti_identity_dir }}/{{ ziti_identity_name_fix }}.json"
+      become: true
       register: ziti_identity_import_check
 
     - name: Add identity
