@@ -103,21 +103,21 @@
     - name: Save join token + URL as fact
       ansible.builtin.set_fact:
         k3s_join_token: >- # get join token
-          {% for host in ansible_play_hosts %}
-          {% if hostvars[host].k3s_master_node | default(false) %}
+          {%- for host in ansible_play_hosts -%}
+          {%- if hostvars[host].k3s_master_node | default(false) -%}
           {{ hostvars[host].join_token.stdout | trim }}
-          {% endif %}
-          {% endfor %}
+          {%- endif -%}
+          {%- endfor -%}
         k3s_join_url: >- # get URL to join the cluster (ip of the master node)
-          {% if k3s_node_type == 'agent' and k3s_fixed_registration_address | default(false) %}
+          {%- if k3s_node_type == 'agent' and k3s_fixed_registration_address | default(false) -%}
           {{ k3s_fixed_registration_address }}
-          {% else %}
-            {% for host in ansible_play_hosts %}
-              {% if hostvars[host].k3s_master_node | default(false) %}
+          {%- else -%}
+            {%- for host in ansible_play_hosts -%}
+              {%- if hostvars[host].k3s_master_node | default(false) -%}
               https://{{ hostvars[host].ansible_host }}:6443
-              {% endif %}
-            {% endfor %}
-          {% endif %}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endif -%}
     
     # STEP 4 - JOIN NODES
     - name: Create env file for K3s
