@@ -15,6 +15,7 @@
     # --- OPENZITI TUNNELER OPTIONS ---
     ziti_identity_dir: /opt/openziti/etc/identities     # [Required] The directory where ziti-edge-tunnel stores it's identities.
     #ziti_identity_name: my_identity                    # [Optional] How the file of the imported identiy should be called. Defaults to ansible_hostname.
+    #ziti_enroll_token: JWT                             # [Required] The JWT enrollment token to register at the OpenZiti controller. Should be declared in the inventory on host-level.
     #ziti_use_systemd_resolved: false                   # [Optional] Defines wether to configure systemd-resolved with ziti-edge-tunnel as DNS resolver or not. Defaults to false.
 
   tasks:
