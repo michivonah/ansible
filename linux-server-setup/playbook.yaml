@@ -59,6 +59,17 @@
         state: present
       when: ansible_virtualization_type == 'kvm'
 
+    - name: Get localectl status
+      ansible.builtin.command:
+        cmd: localectl status
+      register: localectl_status
+      changed_when: false
+
+    - name: Set CH keyboard layout
+      ansible.builtin.command:
+        cmd: localectl set-x11-keymap ch
+      when: "'X11 Layout: ch' not in localectl_status.stdout"
+
 - name: Disable & remove cockpit
   gather_facts: false
   become: true
