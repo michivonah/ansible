@@ -8,6 +8,7 @@
     k3s_version: 1.37.0
     #k3s_node_type: server # possible values: [server, agent]; should be defined on host level inside inventory;
     #k3s_master_node: false # Set this to true, on the node which should initialize the cluster + store the join token
+    #k3s_fixed_registration_address: "" # Fixed registration address behind Load Balancer, Virtual IP or DNS record for TLS SAN (Subject Alternative Name)
 
   tasks:
     # - name: Get current index
@@ -107,11 +108,15 @@
           {% endif %}
           {% endfor %}
         k3s_join_url: >- # get URL to join the cluster (ip of the master node)
-          {% for host in ansible_play_hosts %}
-          {% if hostvars[host].k3s_master_node | default(false) %}
-          https://{{ hostvars[host].ansible_host }}:6443
+          {% if k3s_node_type == 'agent' and k3s_fixed_registration_address | default(false) %}
+          {{ k3s_fixed_registration_address }}
+          {% else %}
+            {% for host in ansible_play_hosts %}
+              {% if hostvars[host].k3s_master_node | default(false) %}
+              https://{{ hostvars[host].ansible_host }}:6443
+              {% endif %}
+            {% endfor %}
           {% endif %}
-          {% endfor %}
     
     # STEP 4 - JOIN NODES
     - name: Create env file for K3s

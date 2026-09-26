@@ -22,4 +22,4 @@ Restart=always
 RestartSec=5s
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart=/usr/local/bin/k3s {{ 'server' if k3s_node_type == 'server' else 'agent' }}
+ExecStart=/usr/local/bin/k3s {{ 'server' if k3s_node_type == 'server' else 'agent' }} {% if k3s_node_type == 'server' and k3s_fixed_registration_address | default(false) %}--tls-san={{ k3s_fixed_registration_address }}{% endif %}
