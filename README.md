@@ -56,6 +56,13 @@ ansible test -m ping -i inventory.yaml
 ansible-playbook -i inventory.yaml playbook.yaml
 ```
 
+- A playbook can also be run locally instead of applying to a remote host via SSH:
+```bash
+ansible-playbook playbook.yml --connection=local
+```
+
+- [Local playbooks](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_delegation.html#local-playbooks)
+
 - A play is a ordered list of tasks with the definition on how to run them (variables, etc.)
 - Each play consists of at minium the nodes to target and the tasks to execute
 - So this is a play
