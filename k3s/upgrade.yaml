@@ -5,9 +5,11 @@
 
 - name: Setup K3s
   gather_facts: false
+  serial: 1
   hosts: k3s
   vars:
-    k3s_version: 1.37.0
+    # --- GLOBAL K3S OPTIONS ---
+    k3s_version: 1.37.0   # [Required] Which version of K3s should be installed; see https://github.com/k3s-io/k3s/releases
 
   tasks:
     - name: Get current K3s version
