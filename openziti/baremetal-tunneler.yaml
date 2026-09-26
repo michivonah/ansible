@@ -3,11 +3,15 @@
   hosts:
     - debian-ziti-test
   vars:
-    ubuntu_lts_mapping:
+    # --- DEBIAN TO UBUNTU LTS VERSION MAPPING ---
+    ubuntu_lts_mapping:                                # [Required for Debian] Map debian version names to it's ubuntu LTS pendant; as shown here: https://netfoundry.io/docs/openziti/how-to-guides/tunnelers/linux/debian-package/
       trixie: "jammy"
       bookworm: "jammy"
       bullseye: "focal"
-    ziti_identity_dir: /opt/openziti/etc/identities
+
+    # --- OPENZITI TUNNELER OPTIONS ---
+    ziti_identity_dir: /opt/openziti/etc/identities     # [Required] The directory where ziti-edge-tunnel stores it's identities.
+    #ziti_identity_name: my_identity                    # [Optional] How the file of the imported identiy should be called. Defaults to ansible_hostname.
 
   tasks:
     - name: Map UBUNTU_LTS value based on distribution release
