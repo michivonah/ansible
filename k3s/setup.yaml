@@ -14,23 +14,7 @@
     #   ansible.builtin.set_fact:
     #     host_index: "{{ ansible_play_hosts.index(inventory_hostname) }}"
 
-    - name: Get K3s cluster join token
-      ansible.builtin.command:
-        cmd: cat /var/lib/rancher/k3s/server/token
-      become: true
-      run_once: true
-      when: k3s_master_node
-      register: join_token
-      changed_when: false
-      failed_when: false
-
-    - name: Save join token as fact
-      ansible.builtin.set_fact:
-        k3s_join_token: "{{ join_token.stdout }}"
-        k3s_join_url: "https://{{ ansible_host }}:6443" # get URL to join the cluster (ip of the master node)
-      run_once: true
-      when: k3s_master_node
-
+    # STEP 1 - PREPARE ALL NODES
     - name: Install kernel-modules-extra on RHEL-based-oses
       ansible.builtin.dnf:
         name: "kernel-modules-extra"
@@ -80,12 +64,63 @@
         src: ./systemd/k3s.service.j2
       become: true
 
+    # STEP 2 - SETUP MASTER NODE / INIT CLUSTER
+    - name: Create env file for K3s (only master)
+      ansible.builtin.template:
+        dest: /etc/systemd/system/k3s.service.env
+        mode: '600'
+        src: ./systemd/k3s.service.env.j2
+      become: true
+      when: k3s_master_node
+
+    - name: Enable & start K3s service (only master)
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+        enabled: true
+        name: k3s.service
+        state: started
+      become: true
+      when: k3s_master_node
+
+    # STEP 3 - GET JOIN TOKEN
+    - name: Wait for generation of join token
+      ansible.builtin.wait_for:
+        path: /var/lib/rancher/k3s/server/token
+        state: "present"
+      become: true
+      when: k3s_master_node
+
+    - name: Get K3s cluster join token
+      ansible.builtin.command:
+        cmd: cat /var/lib/rancher/k3s/server/token
+      become: true
+      when: k3s_master_node
+      register: join_token
+      changed_when: false
+
+    - name: Save join token + URL as fact
+      ansible.builtin.set_fact:
+        k3s_join_token: >- # get join token
+          {% for host in ansible_play_hosts %}
+          {% if hostvars[host].k3s_master_node | default(false) %}
+          {{ hostvars[host].join_token.stdout | trim }}
+          {% endif %}
+          {% endfor %}
+        k3s_join_url: >- # get URL to join the cluster (ip of the master node)
+          {% for host in ansible_play_hosts %}
+          {% if hostvars[host].k3s_master_node | default(false) %}
+          https://{{ hostvars[host].ansible_host }}:6443
+          {% endif %}
+          {% endfor %}
+    
+    # STEP 4 - JOIN NODES
     - name: Create env file for K3s
       ansible.builtin.template:
         dest: /etc/systemd/system/k3s.service.env
         mode: '600'
         src: ./systemd/k3s.service.env.j2
       become: true
+      when: not k3s_master_node
 
     - name: Enable & start K3s service
       ansible.builtin.systemd_service:
@@ -94,3 +129,4 @@
         name: k3s.service
         state: started
       become: true
+      when: not k3s_master_node
