@@ -128,6 +128,12 @@
         become: true
         when: networkmanager_result.changed
 
+      - name: Restart ziti-edge-tunnel # maybe prevents need for reboot
+        ansible.builtin.systemd_service:
+          name: ziti-edge-tunnel
+          state: "restarted"
+        become: true
+
       - name: Get resolvectl status
         ansible.builtin.command:
           cmd: resolvectl status
