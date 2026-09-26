@@ -1,4 +1,4 @@
-- name: Install OpenZiti tunneler on debian host
+- name: Install OpenZiti tunneler locally (bare-metal)
   gather_facts: true
   hosts:
     - debian-ziti-test
@@ -13,8 +13,9 @@
     - name: Map UBUNTU_LTS value based on distribution release
       ansible.builtin.set_fact:
         ubuntu_lts: "{{ ubuntu_lts_mapping[ansible_distribution_release] | default('jammy') }}"
+      when: ansible_os_family == 'Debian'
 
-    - name: Add OpenZiti repo
+    - name: Add OpenZiti repo (Debian)
       ansible.builtin.deb822_repository:
         components: main
         name: openziti
@@ -24,13 +25,25 @@
         types: deb
         uris: https://packages.openziti.org/zitipax-openziti-deb-stable
       become: true
+      when: ansible_os_family == 'Debian'
+
+    - name: Add OpenZiti repo (RHEL)
+      ansible.builtin.yum_repository:
+        baseurl: "https://packages.openziti.org/zitipax-openziti-rpm-stable/redhat$releasever/$basearch"
+        description: OpenZiti
+        enabled: true
+        gpgcheck: false
+        gpgkey: "https://packages.openziti.org/zitipax-openziti-rpm-stable/redhat$releasever/$basearch/repodata/repomd.xml.key"
+        name: OpenZiti
+        repo_gpgcheck: true
+      become: true
+      when: ansible_os_family == 'RedHat'
 
     - name: Install ziti-edge-tunnel
-      ansible.builtin.apt:
+      ansible.builtin.package:
         name:
           - ziti-edge-tunnel
-        state: present
-        update_cache: true
+        state: "present"
       become: true
 
     - name: Enable + start ziti-edge-tunnel service
