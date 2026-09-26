@@ -235,6 +235,9 @@ when: ansible_os_family == 'Debian'
 
 - [Docs](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html)
 
+### Execution strategies
+- [Docs](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_strategies.html)
+
 ### Handy modules
 - [ansible.builtin.user](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/user_module.html)
 - [ansible.builtin.package](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/package_module.html)
