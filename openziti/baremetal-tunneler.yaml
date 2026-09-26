@@ -1,3 +1,6 @@
+# OpenZiti docs: https://netfoundry.io/docs/openziti/intro
+# Run playbook: ansible-playbook -i inventory.yaml openziti/baremetal-tunneler.yaml
+
 - name: Install OpenZiti tunneler locally (bare-metal)
   gather_facts: true
   hosts:
@@ -12,8 +15,10 @@
     # --- OPENZITI TUNNELER OPTIONS ---
     ziti_identity_dir: /opt/openziti/etc/identities     # [Required] The directory where ziti-edge-tunnel stores it's identities.
     #ziti_identity_name: my_identity                    # [Optional] How the file of the imported identiy should be called. Defaults to ansible_hostname.
+    #ziti_use_systemd_resolved: false                   # [Optional] Defines wether to configure systemd-resolved with ziti-edge-tunnel as DNS resolver or not. Defaults to false.
 
   tasks:
+    # STEP 1 - INSTALL + SETUP OPENZITI TUNNELER (ziti-edge-tunnel)
     - name: Map UBUNTU_LTS value based on distribution release
       ansible.builtin.set_fact:
         ubuntu_lts: "{{ ubuntu_lts_mapping[ansible_distribution_release] | default('jammy') }}"
@@ -73,5 +78,68 @@
       become: true
       when: not ziti_identity_import_check.stat.exists
 
-# Notice: This playbook doesn't configure ziti-edge-tunnel as nameserver for systemd-resolved. So you only can use ziti as host via this playbook.
-# If you want access services, you should configure systemd-resolved as described here: https://netfoundry.io/docs/openziti/how-to-guides/tunnelers/linux/debian-package
+    # STEP 2 - CONFIGURE SYSTEM-RESOLVED
+    # OpenZiti docs: https://netfoundry.io/docs/openziti/how-to-guides/tunnelers/linux/redhat-package
+    # systemd-resolved setup: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_networking/using-different-dns-servers-for-different-domains_configuring-and-managing-networking
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+      when: "ziti_use_systemd_resolved | default(false)"
+
+    - name: Configure systemd-resolved for resolving OpenZiti service names
+      block:
+      - name: Install systemd-resolved
+        ansible.builtin.package:
+          name:
+            - systemd-resolved
+          state: "present"
+        become: true
+
+      - name: Enable + start systemd-resolved
+        ansible.builtin.systemd_service:
+          enabled: true
+          name: systemd-resolved
+          state: "started"
+        become: true
+
+      # Requirement: ansible-galaxy collection install community.general
+      - name: Adjust NetworkManager config
+        community.general.ini_file:
+          no_extra_spaces: true
+          option: dns
+          path: /etc/NetworkManager/NetworkManager.conf
+          section: main
+          state: present
+          value: systemd-resolved
+        become: true
+        register: networkmanager_result
+
+      - name: Create symlink
+        ansible.builtin.file:
+          force: true
+          path: /etc/resolv.conf
+          src: /run/systemd/resolve/stub-resolv.conf
+          state: link
+        become: true
+
+      - name: Reload NetworkManager
+        ansible.builtin.systemd_service:
+          name: NetworkManager
+          state: "reloaded"
+        become: true
+        when: networkmanager_result.changed
+
+      - name: Get resolvectl status
+        ansible.builtin.command:
+          cmd: resolvectl status
+        register: resolvectl_status
+        changed_when: false
+
+      - name: Reboot if ziti nameserver missing in resolvectl status
+        ansible.builtin.reboot:
+        become: true
+        when: "'100.64.0.2' not in resolvectl_status.stdout" # Default nameserver IP of ziti-edge-tunnel is 100.64.0.2
+
+      when:
+        - "ziti_use_systemd_resolved | default(false)"
+        - "'NetworkManager.service' in services"
+        - "services['NetworkManager.service'].state == 'running'"
