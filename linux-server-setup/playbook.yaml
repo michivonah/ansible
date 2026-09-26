@@ -1,3 +1,5 @@
+# Run playbook: ansible-playbook -i inventory.yaml linux-server-setup/playbook.yaml -K
+
 - name: Basic Linux server setup
   hosts: dns_swarm_cluster
   become: true
