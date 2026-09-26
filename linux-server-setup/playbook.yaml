@@ -60,6 +60,7 @@
       when: ansible_virtualization_type == 'kvm'
 
 - name: Disable & remove cockpit
+  gather_facts: false
   become: true
   hosts:
     - dns_swarm_cluster
@@ -70,6 +71,7 @@
         enabled: false
         name: cockpit.socket
         state: stopped
+      failed_when: false
 
     - name: Uninstall cockpit
       ansible.builtin.package:
