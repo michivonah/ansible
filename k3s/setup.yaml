@@ -5,16 +5,17 @@
   gather_facts: true
   hosts: k3s
   vars:
-    k3s_version: 1.37.0
-    #k3s_node_type: server # possible values: [server, agent]; should be defined on host level inside inventory;
-    #k3s_master_node: false # Set this to true, on the node which should initialize the cluster + store the join token
-    #k3s_fixed_registration_address: "" # Fixed registration address behind Load Balancer, Virtual IP or DNS record for TLS SAN (Subject Alternative Name)
+    # --- GLOBAL K3S OPTIONS ---
+    k3s_version: 1.37.0                     # [Required] Which version of K3s should be installed; see https://github.com/k3s-io/k3s/releases
+
+    # --- CLUSTER SPECIFIC OPTIONS (should be defined in inventory) ---
+    #k3s_fixed_registration_address: ""     # [Optional] Fixed registration address behind Load Balancer, Virtual IP or DNS record for TLS SAN (Subject Alternative Name)
+
+    # --- NODE SPECIFIC OPTIONS (should be defined in inventory) ---
+    #k3s_node_type: server                  # [Required] Role of the node: 'server' or 'agent'
+    #k3s_master_node: false                 # [Optional] Set to true, on the node which should initialize the cluster + store the join token. Should only be set on one node.
 
   tasks:
-    # - name: Get current index
-    #   ansible.builtin.set_fact:
-    #     host_index: "{{ ansible_play_hosts.index(inventory_hostname) }}"
-
     # STEP 1 - PREPARE ALL NODES
     - name: Install kernel-modules-extra on RHEL-based-oses
       ansible.builtin.dnf:
