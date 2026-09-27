@@ -3,7 +3,7 @@
 
 # PLEASE CHECK RELEASE NOTES FOR BREAKING CHANGES BEFORE UPDATING!
 
-- name: Setup K3s
+- name: Upgrade K3s version
   gather_facts: false
   serial: 1
   hosts: k3s
