@@ -1,0 +1,11 @@
+# Docs: https://docs.k3s.io/add-ons/helm#customizing-packaged-components-with-helmchartconfig
+
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    deployment:
+      replicas: {{ k3s_traefik_replicas | default(2) }}

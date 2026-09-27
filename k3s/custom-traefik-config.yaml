@@ -1,0 +1,20 @@
+# K3s docs: https://docs.k3s.io/
+# Run playbook: ansible-playbook -i inventory.yaml k3s/custom-traefik-config.yaml
+
+- name: Setup K3s
+  gather_facts: false
+  hosts: k3s
+  vars:
+    # --- OPTIONS ---
+    k3s_traefik_replicas: 2   # [Optional] Amount of traefik replicas which should be deployed. Defaults to 2.
+
+    # --- NODE SPECIFIC OPTIONS (should be defined in inventory) ---
+    #k3s_master_node: false   # [Optional] Task will only be run on the master node. Should only be defined one node.
+
+  tasks:
+    - name: Create custom traefik config
+      ansible.builtin.template:
+        dest: /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+        src: ./manifests/traefik-config.yaml.j2
+      become: true
+      when: k3s_master_node | default(false)
