@@ -1,0 +1,120 @@
+# Longhorn docs: https://longhorn.io/docs/1.12.1/deploy/install/
+# Run playbook: ansible-playbook -i inventory.yaml k3s/longhorn-setup.yaml
+
+- name: Setup longhorn for K3s # for using the V1 Data Engine
+  gather_facts: true
+  hosts: k3s
+  vars:
+    arch_map:
+      x86_64: "amd64"
+      aarch64: "arm64"
+
+    packages:
+      Debian:
+        - nfs-common
+        - mawk
+        - open-iscsi # https://longhorn.io/docs/1.12.1/advanced-resources/os-distro-specific/csi-on-k3s/
+      RedHat:
+        - nfs-utils
+        - gawk
+        - iscsi-initiator-utils # https://longhorn.io/kb/troubleshooting-open-iscsi-on-rhel/
+
+    # --- LONGHORN OPTIONS ---
+    longhorn_version: 1.12.1                              # [Required] Which version of longhorn should be installed; see https://github.com/longhorn/longhorn/releases
+    #longhorn_cli_version: 1.12.1                         # [Optional] Which version of longhornctl should be installed. If not defined, longhornctl will not be installed.
+
+    # --- KUBECTL OPTIONS ---
+    #kubeconfig_location: /etc/rancher/k3s/k3s.yaml       # [Optional] Location where the kubeconfig for kubectl is stored. Defaults to /etc/rancher/k3s/k3s.yaml
+
+    # --- NODE SPECIFIC OPTIONS (should be defined in inventory) ---
+    #k3s_node_type: server                                # [Required] Role of the node: 'server' or 'agent'; at least one server node is required to deploy longhorn
+
+  tasks:
+    # STEP 1 - PREPARE NODES FOR LONGHORN
+    - name: Install general requirements
+      ansible.builtin.package:
+        name:
+          - bash
+          - curl
+          - grep
+          - util-linux # replaces findmnt, blkid, lsblk
+        state: "present"
+      become: true
+
+    - name: Install os-specific requirements
+      ansible.builtin.package:
+        name: "{{ packages[ansible_os_family] }}"
+        state: "present"
+      become: true
+
+    - name: Check if initiatorname.iscsi exists
+      ansible.builtin.stat:
+        path: "/etc/iscsi/initiatorname.iscsi"
+      become: true
+      register: initiatorname_iscsi_existence
+
+    - name: Configure iscsi initiator name # as seen here: https://longhorn.io/docs/1.12.1/deploy/install/#install-open-iscsi
+      ansible.builtin.command:
+        cmd: 'echo "InitiatorName=$(/sbin/iscsi-iname)" > /etc/iscsi/initiatorname.iscsi'
+      become: true
+      when: not initiatorname_iscsi_existence.stat.exists
+
+    # Requirement: ansible-galaxy collection install community.general
+    - name: Ensure kernel module iscsi_tcp is loaded
+      community.general.modprobe:
+        name: iscsi_tcp
+        state: present
+      become: true
+
+    - name: Start iscsid
+      ansible.builtin.systemd_service:
+        enabled: true
+        name: iscsid
+        state: started
+      become: true
+
+    - name: Install longhornctl (CLI)
+      ansible.builtin.get_url:
+        dest: /usr/local/bin/longhornctl
+        mode: "+x"
+        url: "https://github.com/longhorn/cli/releases/download/v{{ longhorn_cli_version }}/longhornctl-linux-{{ arch_map[ansible_architecture] | default(ansible_architecture) }}"
+      become: true
+      when:
+        - k3s_master_node | default(false)
+        - longhorn_cli_version | default(false)
+
+    # STEP 2 - DEPLOY LONGHORN TO CLUSTER
+    - name: Deploy longhorn via master node
+      block:
+        # - name: Install epel on RHEL # required to install python3-kubernetes on RHEL
+        #   ansible.builtin.dnf:
+        #     name: "epel-release"
+        #     state: present
+        #   become: true
+        #   when: ansible_os_family == 'RedHat'
+
+        # - name: Install python3-kubernetes # dependency for kubernetes.core.k8s
+        #   ansible.builtin.package:
+        #     name:
+        #       - python3-kubernetes
+        #     state: "present"
+        #   become: true
+
+        - name: Download longhorn YAML manifest
+          ansible.builtin.get_url:
+            dest: "/var/lib/rancher/k3s/server/manifests/longhorn.yaml" # Auto-Deployment: https://docs.k3s.io/installation/packaged-components
+            group: "root"
+            mode: "700" #644
+            owner: "root"
+            url: "https://raw.githubusercontent.com/longhorn/longhorn/v{{ longhorn_version }}/deploy/longhorn.yaml"
+          become: true
+
+        # Requirement: ansible-galaxy collection install kubernetes.core
+        # - name: Install longhorn via kubectl
+        #   kubernetes.core.k8s:
+        #     kubeconfig: "{{ kubeconfig_location | default('/etc/rancher/k3s/k3s.yaml') }}"
+        #     src: "~/longhorn.yaml"
+        #     state: present
+        #   become: true
+      run_once: true # Run this task only on one host
+      when: k3s_node_type == 'server' | default(false) # Deployment has to be done on a server node
