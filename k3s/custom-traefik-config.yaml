@@ -1,7 +1,7 @@
 # K3s docs: https://docs.k3s.io/
 # Run playbook: ansible-playbook -i inventory.yaml k3s/custom-traefik-config.yaml
 
-- name: Setup K3s
+- name: Customize traefik config
   gather_facts: false
   hosts: k3s
   vars:
