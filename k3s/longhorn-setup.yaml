@@ -14,10 +14,12 @@
         - nfs-common
         - mawk
         - open-iscsi # https://longhorn.io/docs/1.12.1/advanced-resources/os-distro-specific/csi-on-k3s/
+        - dmsetup
       RedHat:
         - nfs-utils
         - gawk
         - iscsi-initiator-utils # https://longhorn.io/kb/troubleshooting-open-iscsi-on-rhel/
+        - device-mapper
 
     # --- LONGHORN OPTIONS ---
     longhorn_version: 1.12.1                              # [Required] Which version of longhorn should be installed; see https://github.com/longhorn/longhorn/releases
@@ -38,6 +40,7 @@
           - curl
           - grep
           - util-linux # replaces findmnt, blkid, lsblk
+          - cryptsetup # for volume encryption using LUKS2; https://longhorn.io/docs/1.12.1/deploy/install/#install-cryptsetup-and-luks
         state: "present"
       become: true
 
