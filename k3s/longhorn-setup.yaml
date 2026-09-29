@@ -63,11 +63,15 @@
       when: not initiatorname_iscsi_existence.stat.exists
 
     # Requirement: ansible-galaxy collection install community.general
-    - name: Ensure kernel module iscsi_tcp is loaded
+    - name: Ensure required kernel modules are loaded
       community.general.modprobe:
-        name: iscsi_tcp
+        name: "{{ item }}"
         state: present
       become: true
+      loop:
+        - iscsi_tcp
+        - nfs
+        - dm_crypt
 
     - name: Start iscsid
       ansible.builtin.systemd_service:
