@@ -24,6 +24,7 @@
     # --- LONGHORN OPTIONS ---
     longhorn_version: 1.12.1                              # [Required] Which version of longhorn should be installed; see https://github.com/longhorn/longhorn/releases
     #longhorn_cli_version: 1.12.1                         # [Optional] Which version of longhornctl should be installed. If not defined, longhornctl will not be installed.
+    #longhorn_frontend_host: longhorn.k3s.local           # [Optional] The hostname through which the longhorn frontend should be accessible. If not set, longhorn is accessible only internally via the ClusterIP.
 
     # --- KUBECTL OPTIONS ---
     #kubeconfig_location: /etc/rancher/k3s/k3s.yaml       # [Optional] Location where the kubeconfig for kubectl is stored. Defaults to /etc/rancher/k3s/k3s.yaml
@@ -115,6 +116,13 @@
             owner: "root"
             url: "https://raw.githubusercontent.com/longhorn/longhorn/v{{ longhorn_version }}/deploy/longhorn.yaml"
           become: true
+
+        - name: Deploy traefik IngressRoute for longhorn frontend
+          ansible.builtin.template:
+            dest: /var/lib/rancher/k3s/server/manifests/longhorn-ingress.yaml
+            src: ./manifests/longhorn-ingress.yaml.j2
+          become: true
+          when: longhorn_frontend_host | default(false)
 
         # Requirement: ansible-galaxy collection install kubernetes.core
         # - name: Install longhorn via kubectl
