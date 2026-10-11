@@ -22,30 +22,31 @@
     #k3s_master_node: false               # [Optional] Task will only be run on the master node. Should only be defined one node.
 
   tasks:
-    - name: Create custom traefik config
-      ansible.builtin.template:
-        dest: /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
-        src: ./manifests/traefik-config.yaml.j2
-      become: true
-      when: k3s_master_node | default(false)
+    - name: Execute on master/server node
+      block:
+        - name: Create custom traefik config
+          ansible.builtin.template:
+            dest: /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+            src: ./manifests/traefik-config.yaml.j2
+          become: true
 
-    - name: Create basic auth middleware for traefik dashboard
-      ansible.builtin.template:
-        dest: /var/lib/rancher/k3s/server/manifests/traefik-dashboard-auth.yaml
-        src: ./manifests/traefik-dashboard-auth.yaml.j2
-      become: true
-      when:
-        - k3s_master_node | default(false)
-        - k3s_traefik_host | default(false)
-        - traefik_basicauth_username | default(false)
-        - traefik_basicauth_password | default(false)
+        - name: Create basic auth middleware for traefik dashboard
+          ansible.builtin.template:
+            dest: /var/lib/rancher/k3s/server/manifests/traefik-dashboard-auth.yaml
+            src: ./manifests/traefik-dashboard-auth.yaml.j2
+          become: true
+          when:
+            - k3s_traefik_host | default(false)
+            - traefik_basicauth_username | default(false)
+            - traefik_basicauth_password | default(false)
 
-    - name: Create IngressRoute for traefik dashboard
-      ansible.builtin.template:
-        dest: /var/lib/rancher/k3s/server/manifests/traefik-ingress.yaml
-        src: ./manifests/traefik-ingress.yaml.j2
-      become: true
-      when:
-        - k3s_master_node | default(false)
-        - k3s_traefik_host | default(false)
-        - k3s_traefik_entrypoints | default(false)
+        - name: Create IngressRoute for traefik dashboard
+          ansible.builtin.template:
+            dest: /var/lib/rancher/k3s/server/manifests/traefik-ingress.yaml
+            src: ./manifests/traefik-ingress.yaml.j2
+          become: true
+          when:
+            - k3s_traefik_host | default(false)
+            - k3s_traefik_entrypoints | default(false)
+      run_once: true # Run this block only on one node
+      when: k3s_master_node | default(false) # Run this block on master node
