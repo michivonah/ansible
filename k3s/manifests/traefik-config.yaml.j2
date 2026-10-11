@@ -9,3 +9,7 @@ spec:
   valuesContent: |-
     deployment:
       replicas: {{ k3s_traefik_replicas | default(2) }}
+
+    providers:
+      kubernetesGateway:
+        enabled: {{ traefik_enable_gateway_api | default(false) }}

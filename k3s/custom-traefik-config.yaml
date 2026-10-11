@@ -10,6 +10,7 @@
     #k3s_traefik_host: traefik.k3s.local  # [Optional] Hostname through which the traefik dashboard should be accessable. Disabled by default/if not declared.
     #k3s_traefik_entrypoints:             # [Optional] Over which traefik entrypoints the traefik dashboard should be exposed. Required when k3s_traefik_host is defined.
     #  - web
+    traefik_enable_gateway_api: true      # [Optional] Defines if traefik should allow the usage of the Kubernetes Gateway API. Defaults to false. Docs: https://doc.traefik.io/traefik/getting-started/kubernetes/#exposing-the-application-using-an-ingressroute-crd
 
     # --- NODE SPECIFIC OPTIONS (should be defined in inventory) ---
     #k3s_master_node: false               # [Optional] Task will only be run on the master node. Should only be defined one node.
