@@ -6,10 +6,13 @@
   hosts: k3s
   vars:
     # --- OPTIONS ---
-    k3s_traefik_replicas: 2   # [Optional] Amount of traefik replicas which should be deployed. Defaults to 2.
+    k3s_traefik_replicas: 2               # [Optional] Amount of traefik replicas which should be deployed. Defaults to 2.
+    #k3s_traefik_host: traefik.k3s.local  # [Optional] Hostname through which the traefik dashboard should be accessable. Disabled by default/if not declared.
+    #k3s_traefik_entrypoints:             # [Optional] Over which traefik entrypoints the traefik dashboard should be exposed. Required when k3s_traefik_host is defined.
+    #  - web
 
     # --- NODE SPECIFIC OPTIONS (should be defined in inventory) ---
-    #k3s_master_node: false   # [Optional] Task will only be run on the master node. Should only be defined one node.
+    #k3s_master_node: false               # [Optional] Task will only be run on the master node. Should only be defined one node.
 
   tasks:
     - name: Create custom traefik config
@@ -18,3 +21,13 @@
         src: ./manifests/traefik-config.yaml.j2
       become: true
       when: k3s_master_node | default(false)
+
+    - name: Create IngressRoute for traefik dashboard
+      ansible.builtin.template:
+        dest: /var/lib/rancher/k3s/server/manifests/traefik-ingress.yaml
+        src: ./manifests/traefik-ingress.yaml.j2
+      become: true
+      when:
+        - k3s_master_node | default(false)
+        - k3s_traefik_host | default(false)
+        - k3s_traefik_entrypoints | default(false)

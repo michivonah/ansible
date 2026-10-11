@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard-ingress
+  namespace: kube-system
+spec:
+  entryPoints:
+  {% for entrypoint in k3s_traefik_entrypoints %}
+    - {{ entrypoint }}
+  {% endfor -%}
+  routes:
+    - match: Host(`{{ k3s_traefik_host }}`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService
