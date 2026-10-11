@@ -10,6 +10,11 @@ spec:
     deployment:
       replicas: {{ k3s_traefik_replicas | default(2) }}
 
+    {% if k3s_traefik_host | default(false) %}
+api:
+      dashboard: true
+    {% endif %}
+
     providers:
       kubernetesGateway:
         enabled: {{ traefik_enable_gateway_api | default(false) }}
