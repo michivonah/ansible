@@ -12,6 +12,12 @@ spec:
   routes:
     - match: Host(`{{ k3s_traefik_host }}`)
       kind: Rule
+
+    {% if traefik_basicauth_username | default(false) and traefik_basicauth_password | default(false) %}
+  middlewares:
+        - name: traefik-dashboard-auth
+    {% endif %}
+
       services:
         - name: api@internal
           kind: TraefikService

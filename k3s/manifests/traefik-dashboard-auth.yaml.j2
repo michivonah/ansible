@@ -1,0 +1,21 @@
+---
+# K8s Secrets: https://kubernetes.io/docs/concepts/configuration/secret/#basic-authentication-secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: traefik-dashboard-secret
+  namespace: kube-system
+type: kubernetes.io/basic-auth
+data:
+  username: {{ traefik_basicauth_username }}
+  password: {{ traefik_basicauth_password }}
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: traefik-dashboard-auth
+  namespace: kube-system
+spec:
+  basicAuth:
+    secret: traefik-dashboard-secret
