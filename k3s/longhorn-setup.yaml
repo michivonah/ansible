@@ -163,7 +163,7 @@
                 name: "{{ item.name }}"
                 namespace: longhorn-system
               value: "{{ item.value }}"
-            state: patched
+            state: present
           become: true
           loop: "{{ longhorn_settings }}" # dict2items
 
