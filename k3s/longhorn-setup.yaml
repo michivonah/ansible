@@ -32,12 +32,6 @@
       - name: "node-down-pod-deletion-policy"
         value: "delete-both-statefulset-and-deployment-pod"
 
-      # - name: "backup-target"
-      #   value: "s3://"
-
-      # - name: "backup-target-credential-secret"
-      #   value: "secret"
-
     # --- KUBECTL OPTIONS ---
     #kubeconfig_location: /etc/rancher/k3s/k3s.yaml       # [Optional] Location where the kubeconfig for kubectl is stored. Defaults to /etc/rancher/k3s/k3s.yaml
     #kubectl_bin_location: /usr/local/bin/kubectl         # [Optional] Location where the kubectl binary is located on the node. Defaults to /usr/local/bin/kubectl
