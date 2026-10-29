@@ -67,6 +67,7 @@
       containers.podman.podman_image:
         name: franken-php-webserver
         path: '{{ project_path }}'
+        force: true
 
     # - name: Increase UDP puffer size via sysctl
     #   ansible.posix.sysctl:
