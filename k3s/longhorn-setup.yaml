@@ -129,7 +129,7 @@
             dest: /var/lib/rancher/k3s/server/manifests/longhorn-ingress.yaml
             src: ./manifests/longhorn-ingress.yaml.j2
           become: true
-          when: longhorn_frontend_host | default(false)
+          when: longhorn_frontend_host is defined
 
         # Requirement: ansible-galaxy collection install kubernetes.core
         # - name: Install longhorn via kubectl
@@ -170,4 +170,4 @@
       run_once: true # Run this block only on one node
       when:
         - k3s_node_type == 'server' | default(false) # Has to be run on a server node
-        - longhorn_settings | default(false) # Only run this block, when custom settings are defined
+        - longhorn_settings is defined # Only run this block, when custom settings are defined
