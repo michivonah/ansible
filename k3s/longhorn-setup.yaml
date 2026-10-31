@@ -32,6 +32,17 @@
       - name: "node-down-pod-deletion-policy"
         value: "delete-both-statefulset-and-deployment-pod"
 
+    # --- LONGHORN BACKUP OPTIONS ---
+    # longhorn_backup_target: nfs://<SERVER>:<PATH>       # [Optional] The default target for backups in longhorn. Will be named "default" after creation. Can be a NFS, SMB, CIFS or S3 path.
+    # longhorn_backup_tasks:                              # [Optional] Definition of recurring backup tasks in longhorn. See possible options in the official longhorn docs: https://longhorn.io/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots/
+    #   - name: daily-backup
+    #     cron: "0 0 * * *"
+    #     type: backup
+    #     groups:
+    #       - default
+    #     retain: 7
+    #     concurrency: 2
+
     # --- KUBECTL OPTIONS ---
     #kubeconfig_location: /etc/rancher/k3s/k3s.yaml       # [Optional] Location where the kubeconfig for kubectl is stored. Defaults to /etc/rancher/k3s/k3s.yaml
     #kubectl_bin_location: /usr/local/bin/kubectl         # [Optional] Location where the kubectl binary is located on the node. Defaults to /usr/local/bin/kubectl
@@ -141,16 +152,16 @@
       run_once: true # Run this block only on one node
       when: k3s_node_type == 'server' | default(false) # Deployment has to be done on a server node
 
+    - name: Get longhorn settings API version
+      ansible.builtin.command:
+        cmd: "{{ kubectl_bin_location | default('/usr/local/bin/kubectl') }} get settings.longhorn.io {{ longhorn_settings[0].name }} -n longhorn-system -o jsonpath='{.apiVersion}'"
+      become: true
+      register: longhorn_api_version
+      changed_when: false
+
     # STEP 3 - CONFIGURE LONGHORN
     - name: Confgure custom longhorn settings
       block:
-        - name: Get longhorn settings API version
-          ansible.builtin.command:
-            cmd: "{{ kubectl_bin_location | default('/usr/local/bin/kubectl') }} get settings.longhorn.io {{ longhorn_settings[0].name }} -n longhorn-system -o jsonpath='{.apiVersion}'"
-          become: true
-          register: longhorn_api_version
-          changed_when: false
-        
         # Requirement: ansible-galaxy collection install kubernetes.core
         - name: Configure longhorn settings
           kubernetes.core.k8s:
@@ -171,3 +182,49 @@
       when:
         - k3s_node_type == 'server' | default(false) # Has to be run on a server node
         - longhorn_settings is defined # Only run this block, when custom settings are defined
+
+    # STEP 4 - CONFIGURE BACKUPS
+    - name: Configure longhorn backup options
+      block:
+        - name: Define default backup target
+          kubernetes.core.k8s:
+            kubeconfig: "{{ kubeconfig_location | default('/etc/rancher/k3s/k3s.yaml') }}"
+            resource_definition:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: longhorn-default-resource
+                namespace: longhorn-system
+              data:
+                default-resource.yaml: |
+                  "backup-target": "{{ longhorn_backup_target }}"
+            state: present
+          become: true
+          when:
+            - longhorn_backup_target is defined
+
+        # Docs: https://longhorn.io/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots/
+        - name: Configure backup jobs/task schedule
+          kubernetes.core.k8s:
+            kubeconfig: "{{ kubeconfig_location | default('/etc/rancher/k3s/k3s.yaml') }}"
+            resource_definition:
+              apiVersion: "{{ longhorn_api_version.stdout | default('longhorn.io/v1beta2') }}"
+              kind: RecurringJob
+              metadata:
+                name: "{{ item.name }}"
+                namespace: longhorn-system
+              spec:
+                cron: "{{ item.cron }}"
+                task: "{{ item.type }}"
+                groups: "{{ item.groups }}"
+                retain: "{{ item.retain | int }}" # requires ansible-core 2.20.3 to work: https://stackoverflow.com/questions/69109062/cant-set-ansible-fact-as-integer
+                concurrency: "{{ item.concurrency | int }}" # requires ansible-core 2.20.3 to work: https://stackoverflow.com/questions/69109062/cant-set-ansible-fact-as-integer
+            state: present
+          become: true
+          loop: "{{ longhorn_backup_tasks }}"
+          when:
+            - longhorn_backup_tasks is defined
+
+      run_once: true # Run this block only on one node
+      when:
+        - k3s_node_type == 'server' | default(false) # Has to be run on a server node
