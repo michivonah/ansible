@@ -1,0 +1,42 @@
+# --- DESCRIPTION ---
+# Creates a data directory for openziti and deploys the host tunneler as podman container.
+# Useful for hosting applications from the current host or from within the same podman network.
+
+# --- HOW TO USE ---
+# This is just a tasks file; import this into your playbook like this and pass the variables you need:
+# - name: Create ziti-host container (podman)
+#   ansible.builtin.import_tasks: ./tasks/podman-ziti-host.yaml
+
+# --- VARS ---
+#   vars:
+#     podman_user: "podman"                 # [Required] Which user should run the podman containers.
+#     openziti:
+#       version: 1.22.1                     # [Optional] Specify the version of the ziti-sdk-c (aka the container image label) to use. Defaults to `latest`.
+#       data_dir: /app/ziti-tunneler        # [Required] Directory to store the container data (identity)
+#       container_network: host             # [Optional] Specify a custom container network/mode to use. Defaults to `host` so all services on host-level are available in the container from localhost.
+#       container_name: openziti-tunneler   # [Optional] Set a custom name for the container. Defaults to `openziti-tunneler`.
+#     ziti_enroll_token: "<TOKEN>"          # [Required] JWT-Enrollment token for the openziti identity
+
+
+    - name: Create data directory
+      ansible.builtin.file:
+        group: "{{ podman_user }}"
+        owner: "{{ podman_user }}"
+        path: "{{ openziti.data_dir | default('/app/ziti-tunneler') }}"
+        state: directory
+      become: true
+
+    - name: Create tunneler container
+      containers.podman.podman_container:
+        env:
+          ZITI_ENROLL_TOKEN: "{{ ziti_enroll_token }}"
+        image: "docker.io/openziti/ziti-host:{{ openziti.version | default('latest') }}"
+        name: "{{ openziti.container_name | default('openziti-tunneler') }}"
+        network: "{{ openziti.container_network | default('host') }}"
+        restart_policy: "always"
+        state: "started"
+        pull: newer
+        volume:
+          - "{{ openziti.data_dir }}:/ziti-edge-tunnel:z,U"
+      become: true
+      become_user: "{{ podman_user }}"
