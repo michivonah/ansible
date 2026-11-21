@@ -30,6 +30,7 @@
       ansible.posix.authorized_key:
         key: "{{ lookup('file', public_ssh_key_path) }}"
         user: "{{ admin_user }}"
+      when: public_ssh_key_path is defined
 
     - name: Disable sudo password for new user
       ansible.builtin.lineinfile:
