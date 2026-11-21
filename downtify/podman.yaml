@@ -1,0 +1,79 @@
+# Downtify docs: https://downtify.henriquesebastiao.com/de/getting-started/installation/
+# Run playbook: ansible-playbook -i inventory.yaml downtify/podman.yaml --ask-vault-pass
+
+- name: Deploy downtify with optional openziti tunneler
+  hosts:
+    - your_server
+  gather_facts: false
+
+  # --- DOWNTIFY CONFIGURATION VARIABLES ---
+  # vars:
+  #   podman_user: "podman"                         # [Required] The user who runs the podman containers.
+  #   ziti_enroll_token: "<TOKEN>"                  # [Optional] JWT-Enrollment token for openziti. Only relevant if `deploy_ziti_tunneler` set to `true`.
+  #   downtify:
+  #     version: 3.11.0                             # [Optional] Version of downtify to install. Defaults to `latest`.
+  #     data_dir: /app/downtify                     # [Required] Directory to store downtify data.
+  #      deploy_ziti_tunneler: false                # [Optional] Deploys a openziti tunneler container (ziti-host) into the container network of downtify. The tunneler can access downtify via http://downtify-app:8000 internally, without publishing any ports.
+  #     oidc:                                       # [Optional] Configuration of OIDC for authentication. When enabled the local authentication get's disabled. Details about OIDC config: https://downtify.henriquesebastiao.com/de/getting-started/environment-variables/#mobile-apps-and-sign-in
+  #       issuer_url: https://auth.example.com      # [Optional] OIDC issuer URL
+  #       client_id: "some-client-id"               # [Optional] OIDC client id
+  #       client_secret: "some-random-string"       # [Optional] OIDC client secret
+  #       admin_groups: "downtify-admin"            # [Optional] OIDC groups which should be granted admin privileges
+
+
+  tasks:
+    - name: Create data directories
+      ansible.builtin.file:
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+        path: "{{ downtify.data_dir }}/{{ item }}"
+        state: directory
+      become: true
+      loop:
+        - downloads
+        - data
+        - ziti
+
+    - name: Create podman network
+      containers.podman.podman_network:
+        driver: bridge
+        name: downtify
+        state: present
+      become: true
+      become_user: "{{ podman_user }}"
+
+    - name: Run downtify
+      containers.podman.podman_container:
+        env:
+          TZ: "{{ timezone | default(omit) }}"
+          DOWNTIFY_DISABLE_LOCAL_LOGIN: "{{ downtify.oidc.client_id is defined | default(false) }}"
+          DOWNTIFY_OIDC_ISSUER: "{{ downtify.oidc.issuer_url | default(omit) }}"
+          DOWNTIFY_OIDC_CLIENT_ID: "{{ downtify.oidc.client_id | default(omit) }}"
+          DOWNTIFY_OIDC_CLIENT_SECRET: "{{ downtify.oidc.client_secret | default(omit) }}"
+          DOWNTIFY_OIDC_SCOPES: "openid groups"
+          DOWNTIFY_OIDC_ADMIN_GROUPS: "{{ downtify.oidc.admin_groups | default(omit) }}"
+          DOWNTIFY_DISCOVERY: false # disable network discovery since the clients cannout reach the container via mDNS
+        image: "ghcr.io/henriquesebastiao/downtify:{{ downtify.version | default('latest') }}"
+        name: downtify-app
+        network: downtify
+        # publish:
+        #   - "8000:8000"
+        pull: "newer"
+        recreate: false
+        restart_policy: always
+        state: started
+        timezone: "{{ timezone | default(omit) }}"
+        volume:
+          - "{{ downtify.data_dir }}/downloads:/downloads:z"
+          - "{{ downtify.data_dir }}/data:/data:z"
+      become: true
+      become_user: "{{ podman_user }}"
+
+    - name: Create ziti-tunneler
+      ansible.builtin.import_tasks: ../openziti/tasks/podman-ziti-host.yaml
+      vars:
+        openziti:
+          container_network: downtify
+          container_name: downtify-ziti
+          data_dir: "{{ downtify.data_dir }}/ziti"
+      when: downtify.deploy_ziti_tunneler is defined and downtify.deploy_ziti_tunneler is true
