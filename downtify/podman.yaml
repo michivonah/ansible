@@ -22,6 +22,10 @@
 
 
   tasks:
+    - name: Set ziti deployment flag
+      ansible.builtin.set_fact:
+        _deploy_ziti: "{{ downtify.deploy_ziti_tunneler | default(false) | bool }}"
+
     - name: Create data directories
       ansible.builtin.file:
         owner: "{{ podman_user }}"
@@ -29,10 +33,7 @@
         path: "{{ downtify.data_dir }}/{{ item }}"
         state: directory
       become: true
-      loop:
-        - downloads
-        - data
-        - ziti
+      loop: "{{ ['downloads', 'data'] + (['ziti'] if _deploy_ziti else []) }}"
 
     - name: Create podman network
       containers.podman.podman_network:
@@ -56,8 +57,7 @@
         image: "ghcr.io/henriquesebastiao/downtify:{{ downtify.version | default('latest') }}"
         name: downtify-app
         network: downtify
-        # publish:
-        #   - "8000:8000"
+        publish: "{{ omit if _deploy_ziti else ['8000:8000'] }}"
         pull: "newer"
         recreate: false
         restart_policy: always
@@ -76,4 +76,4 @@
           container_network: downtify
           container_name: downtify-ziti
           data_dir: "{{ downtify.data_dir }}/ziti"
-      when: downtify.deploy_ziti_tunneler is defined and downtify.deploy_ziti_tunneler is true
+      when: _deploy_ziti
