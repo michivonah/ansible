@@ -51,7 +51,7 @@
           DOWNTIFY_OIDC_ISSUER: "{{ downtify.oidc.issuer_url | default(omit) }}"
           DOWNTIFY_OIDC_CLIENT_ID: "{{ downtify.oidc.client_id | default(omit) }}"
           DOWNTIFY_OIDC_CLIENT_SECRET: "{{ downtify.oidc.client_secret | default(omit) }}"
-          DOWNTIFY_OIDC_SCOPES: "openid groups"
+          DOWNTIFY_OIDC_SCOPES: "openid profile groups"
           DOWNTIFY_OIDC_ADMIN_GROUPS: "{{ downtify.oidc.admin_groups | default(omit) }}"
           DOWNTIFY_DISCOVERY: false # disable network discovery since the clients cannout reach the container via mDNS
         image: "ghcr.io/henriquesebastiao/downtify:{{ downtify.version | default('latest') }}"
